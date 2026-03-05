@@ -75,11 +75,13 @@ function htmlVariantPlugin(): Plugin {
         );
       }
 
-      // Desktop builds: inject build-time variant into the inline script so data-variant is set
-      // before CSS loads. Web builds always use 'full' — runtime hostname detection handles variants.
+      // Inject build-time variant into the pre-paint inline script so data-variant is set
+      // before CSS loads, preventing skeleton FOUC on dedicated Vercel deployments where
+      // hostname detection cannot resolve the correct variant (e.g. *.vercel.app domains).
+      // The full if/else is replaced to avoid a dangling-else syntax error in the output.
       if (activeVariant !== 'full') {
         result = result.replace(
-          /if\(v\)document\.documentElement\.dataset\.variant=v;/,
+          /if\(v\)document\.documentElement\.dataset\.variant=v;else document\.documentElement\.removeAttribute\('data-variant'\);/,
           `v='${activeVariant}';document.documentElement.dataset.variant=v;`
         );
       }
