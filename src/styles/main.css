@@ -4547,13 +4547,11 @@ body.playback-mode .status-dot {
   border-bottom-color: var(--semantic-elevated);
 }
 
-/* Conflict zones */
+/* Conflict zones — hatched fill, subtle outline */
 .conflict-zone {
-  fill: rgba(var(--semantic-critical), 0.2);
-  stroke: var(--red);
-  stroke-width: 1;
-  stroke-dasharray: 4, 2;
-  animation: pulse-conflict 2s ease-in-out infinite;
+  fill: url(#conflict-hatch);
+  stroke: rgba(255, 68, 68, 0.5);
+  stroke-width: 0.8;
   transition: opacity 0.2s ease;
 }
 
@@ -4594,18 +4592,6 @@ body.playback-mode .status-dot {
     0 0 6px var(--bg),
     0 0 12px var(--bg),
     0 0 18px var(--red);
-}
-
-@keyframes pulse-conflict {
-
-  0%,
-  100% {
-    fill: rgba(255, 68, 68, 0.15);
-  }
-
-  50% {
-    fill: rgba(255, 68, 68, 0.3);
-  }
 }
 
 /* Base markers */

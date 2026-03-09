@@ -202,6 +202,25 @@ export class MapComponent {
     });
 
     this.svg = d3.select(svgElement);
+
+    // Hatch pattern for conflict zones
+    const defs = this.svg.append('defs');
+    const hatchPattern = defs.append('pattern')
+      .attr('id', 'conflict-hatch')
+      .attr('patternUnits', 'userSpaceOnUse')
+      .attr('width', 8)
+      .attr('height', 8)
+      .attr('patternTransform', 'rotate(45)');
+    hatchPattern.append('rect')
+      .attr('width', 8)
+      .attr('height', 8)
+      .attr('fill', 'rgba(255, 68, 68, 0.12)');
+    hatchPattern.append('line')
+      .attr('x1', 0).attr('y1', 0)
+      .attr('x2', 0).attr('y2', 8)
+      .attr('stroke', 'rgba(255, 68, 68, 0.55)')
+      .attr('stroke-width', 1.5);
+
     this.baseLayerGroup = this.svg.append('g').attr('class', 'map-base');
     this.dynamicLayerGroup = this.svg.append('g').attr('class', 'map-dynamic');
     this.popup = new MapPopup(container);
@@ -630,7 +649,7 @@ export class MapComponent {
         <div class="map-legend-item"><span class="legend-dot high"></span>${escapeHtml((t('popups.hotspot.levels.high') ?? 'HIGH').toUpperCase())}</div>
         <div class="map-legend-item"><span class="legend-dot elevated"></span>${escapeHtml((t('popups.hotspot.levels.elevated') ?? 'ELEVATED').toUpperCase())}</div>
         <div class="map-legend-item"><span class="legend-dot low"></span>${escapeHtml((t('popups.monitoring') ?? 'MONITORING').toUpperCase())}</div>
-        <div class="map-legend-item"><span class="map-legend-icon conflict">⚔</span>${escapeHtml(t('modals.search.types.conflict').toUpperCase())}</div>
+        <div class="map-legend-item"><svg width="12" height="12" viewBox="0 0 12 12" style="flex-shrink:0"><rect x="1" y="1" width="10" height="10" rx="1" fill="rgba(255,68,68,0.12)" stroke="rgba(255,68,68,0.5)" stroke-width="0.8"/><line x1="1" y1="5" x2="7" y2="11" stroke="rgba(255,68,68,0.55)" stroke-width="1"/><line x1="1" y1="1" x2="11" y2="11" stroke="rgba(255,68,68,0.55)" stroke-width="1"/><line x1="5" y1="1" x2="11" y2="7" stroke="rgba(255,68,68,0.55)" stroke-width="1"/></svg><span class="legend-label">${escapeHtml((t('components.deckgl.legend.activeConflict') ?? 'ACTIVE CONFLICT').toUpperCase())}</span></div>
         <div class="map-legend-item"><span class="map-legend-icon earthquake">●</span>${escapeHtml(t('modals.search.types.earthquake').toUpperCase())}</div>
         <div class="map-legend-item"><span class="map-legend-icon apt">⚠</span>APT</div>
       `;

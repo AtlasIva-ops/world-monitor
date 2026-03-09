@@ -269,6 +269,47 @@ const CONFLICT_ZONES_GEOJSON: GeoJSON.FeatureCollection = {
   })),
 };
 
+// ── Hatch-line generator for conflict zones ──────────────────────────────────
+// Produces diagonal line segments clipped to each polygon's bounding box.
+// The lines are spaced ~1.5° apart at 45° angle.
+function generateConflictHatchLines(): [number, number][][] {
+  const SPACING = 1.5; // degrees between hatch lines
+  const paths: [number, number][][] = [];
+
+  for (const zone of CONFLICT_ZONES) {
+    const coords = zone.coords;
+    if (coords.length < 3) continue;
+
+    // Bounding box
+    let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    for (const [lon, lat] of coords) {
+      if (lon < minLon) minLon = lon;
+      if (lon > maxLon) maxLon = lon;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+    }
+
+    // Diagonal lines (bottom-left to top-right, 45°)
+    const range = (maxLon - minLon) + (maxLat - minLat);
+    const startVal = minLon + minLat;
+    for (let d = 0; d <= range; d += SPACING) {
+      const diag = startVal + d;
+      // Line from (diag - maxLat, maxLat) to (diag - minLat, minLat)
+      // Clip to bounding box
+      const x1 = Math.max(minLon, diag - maxLat);
+      const y1 = diag - x1;
+      const x2 = Math.min(maxLon, diag - minLat);
+      const y2 = diag - x2;
+      if (x1 < maxLon && x2 > minLon && y1 >= minLat && y2 <= maxLat) {
+        paths.push([[x1, y1], [x2, y2]]);
+      }
+    }
+  }
+  return paths;
+}
+
+const CONFLICT_HATCH_PATHS = generateConflictHatchLines();
+
 
 export class DeckGLMap {
   private static readonly MAX_CLUSTER_LEAVES = 200;
@@ -1079,9 +1120,9 @@ export class DeckGLMap {
       this.layerCache.delete('pipelines-layer');
     }
 
-    // Conflict zones layer
+    // Conflict zones layer (fill + diagonal hatch)
     if (mapLayers.conflicts) {
-      layers.push(this.createConflictZonesLayer());
+      layers.push(...this.createConflictZonesLayers());
     }
 
 
@@ -1422,23 +1463,41 @@ export class DeckGLMap {
     return layer;
   }
 
-  private createConflictZonesLayer(): GeoJsonLayer {
-    const cacheKey = 'conflict-zones-layer';
+  private createConflictZonesLayers(): Layer[] {
+    const isLight = getCurrentTheme() === 'light';
 
-    const layer = new GeoJsonLayer({
-      id: cacheKey,
+    // 1. Subtle semi-transparent fill (no bold ring)
+    const fill = new GeoJsonLayer({
+      id: 'conflict-zones-layer',
       data: CONFLICT_ZONES_GEOJSON,
       filled: true,
       stroked: true,
-      getFillColor: () => COLORS.conflict,
-      getLineColor: () => getCurrentTheme() === 'light'
-        ? [255, 0, 0, 120] as [number, number, number, number]
-        : [255, 0, 0, 180] as [number, number, number, number],
-      getLineWidth: 2,
+      getFillColor: isLight
+        ? [255, 0, 0, 25] as [number, number, number, number]
+        : [255, 0, 0, 35] as [number, number, number, number],
+      getLineColor: isLight
+        ? [255, 60, 60, 80] as [number, number, number, number]
+        : [255, 60, 60, 100] as [number, number, number, number],
+      getLineWidth: 1,
       lineWidthMinPixels: 1,
       pickable: true,
     });
-    return layer;
+
+    // 2. Diagonal hatch lines over conflict polygons
+    const hatch = new PathLayer({
+      id: 'conflict-hatch-layer',
+      data: CONFLICT_HATCH_PATHS,
+      getPath: (d: [number, number][]) => d,
+      getColor: isLight
+        ? [220, 40, 40, 90] as [number, number, number, number]
+        : [255, 60, 60, 110] as [number, number, number, number],
+      getWidth: 1,
+      widthMinPixels: 1,
+      widthMaxPixels: 1.5,
+      pickable: false,
+    });
+
+    return [fill, hatch];
   }
 
 
@@ -3598,6 +3657,7 @@ export class DeckGLMap {
             { shape: shapes.circle('rgb(160, 100, 255)'), label: t('components.deckgl.legend.aircraft') },
           ]
           : [
+            { shape: `<svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1" fill="rgba(255,60,60,0.2)" stroke="rgba(255,60,60,0.6)" stroke-width="0.8"/><line x1="1" y1="5" x2="7" y2="11" stroke="rgba(255,60,60,0.7)" stroke-width="0.8"/><line x1="1" y1="1" x2="11" y2="11" stroke="rgba(255,60,60,0.7)" stroke-width="0.8"/><line x1="5" y1="1" x2="11" y2="7" stroke="rgba(255,60,60,0.7)" stroke-width="0.8"/></svg>`, label: t('components.deckgl.legend.activeConflict') },
             { shape: shapes.circle('rgb(255, 68, 68)'), label: t('components.deckgl.legend.highAlert') },
             { shape: shapes.circle('rgb(255, 165, 0)'), label: t('components.deckgl.legend.elevated') },
             { shape: shapes.circle(isLight ? 'rgb(180, 120, 0)' : 'rgb(255, 255, 0)'), label: t('components.deckgl.legend.monitoring') },
